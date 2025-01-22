@@ -2,7 +2,7 @@
 
 Tämän tehtävän tavoitteena on perehtyä Dockerin ja Docker Compose:n keskeisiin käsitteisiin ja ominaisuuksiin, kuten volumet, portit ja ympäristömuuttujat. Samalla pääsemme työskentelemään PostgreSQL:n ja pgAdminin kaltaisten "oikeiden" työkalujen kanssa.
 
-Käsittelemme tässä tehtävässä [**PostgreSQL**-tietokantaa](https://hub.docker.com/_/postgres) ja [**pgAdmin**-hallintatyökalua](https://www.pgadmin.org/), mutta samoja periaatteita voidaan soveltaa myös muiden tietokantojen yhteydessä. Tehtävä onkin melko samankaltainen kuin [PostgreSQL:n Docker-imagen dokumentaatiossa esitetty Docker compose -esimerkki](https://hub.docker.com/_/postgres) sekä Dockerin blogitekstissä esitetty [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/) -esimerkki. Selkeimpänä erona tässä tehtävässä käytetään tietokannan hallintaan pgAdmin-työkalua, kun edellä meinituissa työkaluna on [Adminer](https://hub.docker.com/_/adminer/).
+Käsittelemme tässä tehtävässä [**PostgreSQL**-tietokantaa](https://hub.docker.com/_/postgres) ja [**pgAdmin**-hallintatyökalua](https://www.pgadmin.org/), mutta samoja periaatteita voidaan soveltaa myös muiden tietokantojen yhteydessä. Tehtävä onkin melko samankaltainen kuin [PostgreSQL:n Docker-imagen dokumentaatiossa esitetty Docker compose -esimerkki](https://hub.docker.com/_/postgres) sekä Dockerin blogitekstissä esitetty [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/) -esimerkki. Selkeimpänä erona tässä tehtävässä käytetään tietokannan hallintaan pgAdmin-työkalua, kun edellä mainituissa työkaluna on [Adminer](https://hub.docker.com/_/adminer/).
 
 
 ## Suositeltua taustamateriaalia
