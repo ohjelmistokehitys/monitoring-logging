@@ -82,9 +82,13 @@ Kun olet asettanut vaaditut ympäristömuuttujat, suorita `docker compose up`-ko
 
 ## Osa 2: volumet (20 %)
 
+### `/var/lib/postgresql/data`
+
 Haluamme seuraavaksi, että postgreSQL-tietokannan data säilyy tallessa konttien pysäyttämisestä tai poistamisesta riippumatta. Tämä onnistuu käyttämällä Dockerin **volumea**, joka säilyttää tiedot host-järjestelmässä.
 
 Määrittele siis tietokantapalvelulle `volume`, jossa kontin sisään polkuun `/var/lib/postgresql/data` liitetään kontin ulkopuolinen volume. Näin tietokannan tiedot säilyvät myös mahdollisen kontin poistamisen jälkeen. Löydät lisää ohjeita tähän esimerkiksi artikkelista [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/).
+
+### `/docker-entrypoint-initdb.d/`
 
 PostgreSQL mahdollistaa tietokannan alustamisen automaattisesti, kun se käynnistetään ensimmäistä kertaa. Tästä ominaisuudesta käytetään dokumentaatiossa termiä **initialization script**. Käytännössä kontti käy ensimmäistä kertaa käynnistyessään läpi tietyssä hakemistossa olevat sql-, ja sh-skriptit, joiden avulla saamme alustettua tietokannan sisällön haluttuun alkutilaan:
 
@@ -94,10 +98,19 @@ PostgreSQL mahdollistaa tietokannan alustamisen automaattisesti, kun se käynnis
 
 Tässä tehtävässä haluamme lisätä tietokantapalvelimelle automaattisesti **Chinook-esimerkkitietokannan**, jonka luontiskripti löytyy valmiiksi tämän repositorion [`sql`-hakemistosta](./sql/). Liitä siis host-koneen `./sql`-hakemisto tietokantapalvelun sisään hakemistoksi `/docker-entrypoint-initdb.d/`, jolloin tietokanta alustetaan automaattisesti.
 
+### Uudelleenkäynnistys
+
 Lopuksi sulje käynnistämäsi palvelut `docker compose down` -komennolla ja käynnistä ne uudelleen `docker compose up` -komennolla. Tällä kertaa terminaaliin pitäisi ilmestyä lukuisia lokirivejä `postgres`-palvelusta, jossa kerrotaan, että tietokantaan luodaan tauluja ja rivejä (*CREATE TABLE* ja *INSERT*).
 
 > [!TIP]
-> Lisää molemmat volumet kerralla YAML-tiedostoon ja käynnistä palvelut vasta sitten. Jos määrittelet ensin `/var/lib/postgresql/data`-volumen ja käynnistät tietokannan, tietokanta alustetaan tyhjäksi, eikä myöhemmillä käynnistyskerroilla alustusskripteillä ole enää vaikutusta. Jos näin pääsi kuitenkin jo käymään, ja tietokanta on alustettu tyhjänä, voit poistaa `/var/lib/postgresql/data`-volumen ja käynnistää palvelut vielä kerran uudelleen.
+> Lisää molemmat volumet kerralla YAML-tiedostoon ja käynnistä palvelut vasta sitten. Jos määrittelet ensin `/var/lib/postgresql/data`-volumen ja käynnistät tietokannan, tietokanta alustetaan tyhjäksi, eikä myöhemmillä käynnistyskerroilla alustusskripteillä ole enää vaikutusta.
+>
+> Jos näin pääsi kuitenkin jo käymään, ja tietokanta on alustettu tyhjänä, voit poistaa volumet ja käynnistää palvelut vielä kerran uudelleen:
+>
+> ```sh
+> docker compose down --volumes
+> docker compose up
+> ```
 
 
 ## Osa 3: `exec`, `psql` ja tietokantakyselyt (20 %)
@@ -113,13 +126,23 @@ root@a1b2c3d4:/#
 
 PostgreSQL-tietokannan käyttämiseksi komentorivillä voidaan hyödyntää `psql`-työkalua. `psql` mahdollistaa mm. kyselyiden suorittamisen ja muiden tietokantaoperaatioiden tekemisen komentoriviltä, mikä on usein hyödyllistä erityisesti kehitysvaiheessa. `psql` tulee valmiiksi asennettuna PostgreSQL:n virallisessa Docker-imagessa.
 
-Kun olet saanut bash-komentokehotteen auki, eli näet yllä olevaa esimerkkiä vastaavan kehotteen, voit käyttää `psql`-työkalua joko interaktiivisessa tilassa tai suorittamalla `-c`-komennolla yksittäisiä kyselyjä. Kokeile suorittaa seuraava kysely, jossa tietokantaan yhdistetään ympäristömuuttujaan määrittelemälläsi `$POSTGRES_USER`-käyttäjätunnuksella, ja `chinook_auto_increment`-tietokannasta etsitään kaikki kappaleet, joiden nimessä esiintyy joko `hello` tai `world`:
+Kun olet saanut bash-komentokehotteen auki, eli näet yllä olevaa esimerkkiä vastaavan kehotteen, voit käyttää `psql`-työkalua joko interaktiivisessa tilassa tai suorittamalla `-c`-komennolla yksittäisiä kyselyjä. Kokeile suorittaa seuraava kysely, jossa tietokannasta etsitään kaikki kappaleet, joiden nimessä esiintyy joko `hello` tai `world`:
 
 ```sh
+# jos käyttäjänimi löytyy $POSTGRES_USER -muuttujasta:
 psql -U $POSTGRES_USER -d chinook_auto_increment -c "SELECT name FROM Track WHERE name ILIKE '%hello%' OR name ILIKE '%world%'"
 ```
 
+Huomaa, että yllä `-U`-parametrin avulla annetaan tietokannan käyttäjätunnus. Jos määrittelit käyttäjätunnuksen compose-tiedoston ympäristömuuttujiin, voit käyttää sitä tässä. Muussa tapauksessa käytä oletustunnusta `postgres`:
+
+```sh
+# jos et asettanut muuttujaa (oletuskäyttäjänimi `postgres`)
+psql -U postgres -d chinook_auto_increment -c "SELECT name FROM Track WHERE name ILIKE '%hello%' OR name ILIKE '%world%'"
+```
+
 **Tallenna komennon tulostama lista kappaleiden nimistä [hello-world.txt](./hello-world.txt)-tiedostoon.**
+
+💡 *Voit tallentaa tulosteen joko kopioimalla tekstin leikepöydälle ja liittämällä sen tiedostoon. Vaihtoehtoisesti voit myös ohjata tulosteen suoraan tiedostoon käyttämällä `>`-operaattoria. Jos ohjaat tulosteen tiedostoon, voit kopioida tiedoston "ulos" kontista [`docker cp`-komennolla](https://docs.docker.com/reference/cli/docker/container/cp/). `hello-world.txt`-tiedosto voitaisiin liittää konttiin myös volumen avulla, mutta tämä ei ole pakollista.*
 
 
 ## Osa 4: porttien avaaminen (20 %)

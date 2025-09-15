@@ -6,15 +6,17 @@ print(result)
 
 line()
 
-check("name" in result and "services" in result, "The compose file must be valid")
+check("name" in result and "services" in result,
+      "The compose file must be valid")
 
 check("postgres" in result, "postgres service must be defined in the compose file")
 check("pgadmin" in result, "pgadmin service must be defined in the compose file")
 
-check("environment" in result, "You must define environment files for both of the services")
+check("environment" in result,
+      "You must define environment files for both of the services")
 
-check("null_pointer_expert" in result, "Could not find the environment variable for the postgres username")
-check("datasaurus_rex@example.com" in result, "Could not find the environment variable for the pgadmin username")
+check("datasaurus_rex@example.com" in result,
+      "Could not find the environment variable for the pgadmin username")
 
 
 print("Success!")
