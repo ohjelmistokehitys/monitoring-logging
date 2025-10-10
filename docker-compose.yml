@@ -4,15 +4,10 @@ services:
     image: postgres:latest
     env_file: .env
     volumes:
+      # persists data in a Docker volume
       - postgres:/var/lib/postgresql/data
+      # mount initialization scripts to set up the database schema and seed data
       - ./sql/:/docker-entrypoint-initdb.d
-
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
-      interval: 1s
-      timeout: 5s
-      retries: 10
-
     ports:
       - 5432:5432
 
@@ -22,18 +17,6 @@ services:
     env_file: .env
     ports:
       - 3333:3333
-    depends_on:
-      postgres:
-        condition: service_healthy
-  # k6:
-  #   image: grafana/k6
-  #   container_name: k6
-  #   depends_on:
-  #     - app
-  #   volumes:
-  #     - ./k6:/scripts
-  #   command: run /scripts/test.js
-  #   profiles: [ "loadtest" ] # only starts when this profile is active
 
 volumes:
   postgres:
