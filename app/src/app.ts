@@ -18,14 +18,15 @@ app.get('/artists', async (c) => {
         release(conn);
         return c.json(result.rows);
     } catch (err) {
-        let message = (err instanceof Error) ? err.message : 'Unknown error';
-        return c.json({ error: 'Database error', details: message }, 500);
+        console.error('Error while listing artists', err);
+        return c.json({ error: 'Internal server error' }, 500);
     }
 });
 
 
 app.get('/artists/:id', async (c) => {
     const id = c.req.param('id');
+
     try {
         const conn = await connect();
         const artist = (await conn.query('SELECT * FROM artist WHERE artist_id = $1', [id])).rows[0];
@@ -39,8 +40,8 @@ app.get('/artists/:id', async (c) => {
         return c.json({ artist, albums: albums });
 
     } catch (err) {
-        let message = (err instanceof Error) ? err.message : 'Unknown error';
-        return c.json({ error: 'Database error', details: message }, 500);
+        console.error(`Error while getting artist by id ${id}`, err);
+        return c.json({ error: 'Internal server error' }, 500);
     }
 });
 

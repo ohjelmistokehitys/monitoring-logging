@@ -1,0 +1,1 @@
+This file is a placeholder for app log messages, which you need to modify during the exercise.

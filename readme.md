@@ -1,243 +1,218 @@
-# Docker Compose ja PostgreSQL
+# Monitoring and logging
 
-Tämän tehtävän tavoitteena on perehtyä Dockerin ja Docker Compose:n keskeisiin käsitteisiin ja ominaisuuksiin, kuten volumet, portit ja ympäristömuuttujat. Samalla pääsemme työskentelemään PostgreSQL:n ja pgAdminin kaltaisten "oikeiden" työkalujen kanssa.
+This exercise will introduce you to centralized logging and monitoring of applications. Logging and monitoring are essential parts of modern software development and operations, as they help in understanding application behavior, diagnosing issues, and ensuring system reliability. 
 
-Käsittelemme tässä tehtävässä [**PostgreSQL**-tietokantaa](https://hub.docker.com/_/postgres) ja [**pgAdmin**-hallintatyökalua](https://www.pgadmin.org/), mutta samoja periaatteita voidaan soveltaa myös muiden tietokantojen yhteydessä. Tehtävä onkin melko samankaltainen kuin [PostgreSQL:n Docker-imagen dokumentaatiossa esitetty Docker compose -esimerkki](https://hub.docker.com/_/postgres) sekä Dockerin blogitekstissä esitetty [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/) -esimerkki. Selkeimpänä erona tässä tehtävässä käytetään tietokannan hallintaan pgAdmin-työkalua, kun edellä mainituissa työkaluna on [Adminer](https://hub.docker.com/_/adminer/).
-
-
-## Suositeltua taustamateriaalia
-
-* [How to Use the Postgres Docker Official Image (docker.com)](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/)
-* [`docker compose` CLI reference (docker.com)](https://docs.docker.com/reference/cli/docker/compose/)
-* [Compose file reference (docker.com)](https://docs.docker.com/reference/compose-file/)
-* [DevOps with Docker, part 2 (devopswithdocker.com)](https://devopswithdocker.com/category/part-2)
-* [Docker Compose will BLOW your MIND!! (YouTube, NetworkChuck)](https://youtu.be/DM65_JyGxCo)
+Setting up a monitoring and logging stack can be complex, so this exercise provides a ready-made infrastructure where you can try out these tools. This exercise does not contain an in-depth introduction to the tools used, but you can find links to their documentation below. Find sources and tutorials about these tools online, and explore their features. The goal of this exercise is to get you familiar with a minimal set of tools and concepts, so you can continue learning on your own.
 
 
-## Miksi Docker compose?
+## The infrastructure
 
-Docker Compose on usein parempi vaihtoehto kuin erillisten `docker run` -komentojen kirjoittaminen, erityisesti silloin, kun käynnistettäviä palveluita on useita. Docker compose yksinkertaistaa monimutkaisten ympäristöjen hallintaa yksittäisen YAML-tiedoston avulla. Tämä tekee ympäristön pystyttämisestä helpompaa ja vähemmän virhealttiista, kun kaikki konfiguraatiot ja riippuvuudet ovat yhdessä paikassa.
+The exercise infrastructure consists of two separate Docker compose setups: one for the application stack and one for the monitoring stack.
 
-Docker Compose hallitsee volyymit ja verkot automaattisesti ja mm. liittää kaikki samaan tiedostoon määritellyt palvelut osaksi samaa verkkoa, jolloin ne voivat olla vuorovaikutuksessa keskenään. Saman YAML-tiedoston jakaminen esimerkiksi versionhallinnan kautta muiden kanssa on myös sujuvaa, ja se vähentää eroavaisuuksia eri kehittäjien kehitysympäristöissä sekä muissa ympäristöissä.
+There are many ports that need to be opened for the services to work properly. It is recommended that you stop any other potential services on your system that might use the same ports, or change the ports in the [docker-compose.yml](./docker-compose.yml) and [docker-monitoring/docker-compose.yml](./docker-monitoring/docker-compose.yml) files.
 
-
-## PostgreSQL
-
-PostgreSQL on suosittu avoimen lähdekoodin relaatiotietokanta, jota voidaan käyttää hyvin monenlaisissa eri käyttötarkoituksissa:
-
-> *PostgreSQL, often simply "Postgres", is an object-relational database management system (ORDBMS) with an emphasis on extensibility and standards-compliance. As a database server, its primary function is to store data, securely and supporting best practices, and retrieve it later, as requested by other software applications, be it those on the same computer or those running on another computer across a network (including the Internet). It can handle workloads ranging from small single-machine applications to large Internet-facing applications with many concurrent users.*
+> [!NOTE]
+> The monitoring stack integrates with the Docker daemon to collect logs and metrics from all running containers, including the application stack. This setup allows you to monitor the application's performance and view its logs in a centralized manner. 
 >
-> What is PostgreSQL? https://hub.docker.com/_/postgres
-
-PostgreSQL löytyy valmiina Docker-imagena Docker Hub -konttirekisteristä: https://hub.docker.com/_/postgres. Tässä tehtävässä sinun tarvitsee vain hyödyntää valmista imagea ja tutustua sen dokumentaatioon. Dockerfile-tiedostoja ei tässä harjoituksessa tarvita.
-
-
-# Tehtävä: tietokantapalvelimen sekä hallintakäyttöliittymän asennus
-
-Kehittäessäsi sovellusta tarvitset usein erillisen tietokannan, joka sisältää testidataa, joten voit huoletta muuttaa sitä ilman vaikutuksia muihin käyttäjiin tai kehittäjiin. Tässä tehtävässä luot Docker Compose -tiedoston avulla ympäristön, jossa PostgreSQL toimii kontissa, tietokanta alustetaan haluttuun alkutilaan, data pysyy säilytettynä kontin elinkaaresta riippumatta ja pääset hallitsemaan tietokantaa pgAdmin-nimisen työkalun avulla.
-
-> *"While it’s possible to use the Postgres Official Image in production, Docker Postgres containers are best suited for local development. This lets you use tools like Docker Compose to collectively manage your services. You aren’t forced to juggle multiple database containers at scale, which can be challenging."*
+> However, all other containers on your system will also be monitored, so be aware of that.
 >
-> Tyler Charboneau, 2022. [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/)
-
-Tämän tehtävän Docker Compose -asetelma soveltuu hyvin **kehitysympäristöihin**, joissa tarvitset nopeasti käyttöön otettavan tietokannan. Tietokantojen kontittamisesta tuotantoympäristöissä on olemassa eriäviä näkemyksiä. Jotkut kannattavat konttien käyttöä tietokannoille tuotannossa, koska kontit ovat helposti siirrettäviä ja skaalautuvia. Toiset taas vastustavat ajatusta, sillä tietokannat saattavat vaatia monimutkaisempaa hallintaa ja suorituskykyä, mikä voi olla haaste konttipohjaisessa ympäristössä.
+> If you want to avoid monitoring other containers on your system, you can run this exercise on [GitHub codespaces](https://github.com/features/codespaces) or in a separate virtual machine.
 
 
-## docker-compose.yml
+### The application stack
 
-Tästä tehtävärepositoriosta löytyy valmiiksi [docker-compose.yml](./docker-compose.yml)-tiedosto, johon kirjoitetaan kaikki tämän tehtävän Docker-määritykset. Kokeile ratkaisujesi toimivuutta aina ensin `docker compose up` -komennolla ja sulje palvelut `docker compose down`-komennolla ennen seuraavaa kokeilua. Löydät muut mahdolliset komennot [`docker compose`-komennon dokumentaatiosta](https://docs.docker.com/reference/cli/docker/compose/).
+The application stack includes a web application that connects to a PostgreSQL database. The application is built using the [Hono](https://hono.dev/) web framework and uses the [pg](https://node-postgres.com/) library to interact with the PostgreSQL database.
 
-[docker-compose.yml](./docker-compose.yml)-tiedostosta löytyy valmiiksi kaksi palvelua: `postgres` ja `pgadmin`:
+The application's container uses the [default Node.js image](https://hub.docker.com/_/node) as its base image, and the database is based on the [official PostgreSQL image](https://hub.docker.com/_/postgres). The database is initialized with the [Chinook example database](https://www.github.com/lerocha/chinook-database), which contains sample data about artists, albums, and tracks.
 
-```yaml
-services:
-  postgres:
-    image: postgres:latest        # https://hub.docker.com/_/postgres
-    container_name: database
+You don't need to understand the application code in detail for this exercise. If you want to, you can explore the following files in the [app](./app) folder more deeply:
 
-  pgadmin:
-    image: dpage/pgadmin4:latest  # https://hub.docker.com/r/dpage/pgadmin4/
-    container_name: database-admin
-```
+* [Dockerfile](./app/Dockerfile): defines how to build the application Docker image
+* [src/app.ts](./app/src/app.ts): the main application code, which defines the web server and its routes ([/](http://localhost:3333), [/artists](http://localhost:3333/artists) and [/artists/:id](http://localhost:3333/artists/1))
+* [src/db.ts](./app/src/db.ts): database connection code
+* [src/server.ts](./app/src/server.ts): starts the web server
 
-Molemmat **palvelut** perustuvat valmiiseen Docker-imageen. Palveluiden nimet (`postgres` ja `pgadmin`) ovat vapaasti valittavissa, ja palvelut voivat ottaa yhteyksiä toisiinsa näiden nimien avulla:
 
-> *"By default, any service can reach any other service at that service's name."*
+> [!NOTE]
+> There are issues in the application that cause it to crash or become partly unoperational. You don't need to fix these issues in the source code, but instead investigate them using the monitoring stack.
 >
-> https://docs.docker.com/compose/networking/#link-containers
-
-`container_name` puolestaan määrittelee nimen, jolla voit itse suorittaa esimerkiksi Docker-komentoja käynnissä oleville konteille.
+> You also don't need to install, build or run the application locally, as it will be run inside a Docker container.
 
 
-## Osa 1: palveluiden käynnistäminen ja ympäristömuuttujat (20 %)
+### The monitoring stack
 
-Kokeile käynnistää [docker-compose.yml](./docker-compose.yml)-tiedostossa määritellyt palvelut `docker compose up`-komennolla. Huomaat, että kumpikaan palvelu ei käynnisty, koska niille ei ole määritetty välttämättömiä **ympäristömuuttujia**, kuten salasanoja.
+The monitoring stack consists of several popular open-source tools:
 
-Tutustu PostgreSQL:n Docker-imagen dokumentaatioon osoitteessa https://hub.docker.com/_/postgres sekä pgAdmin 4:n dokumentaatioon osoitteessa https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html. Näistä lähteistä löydät vaadittavat **ympäristömuuttujat**, jotka täytyy määritellä kontteja käynnistettäessä. Määrittele siis [docker-compose.yml](./docker-compose.yml)-tiedostoon kummallekin palvelulle [`environment`-lohkot](https://docs.docker.com/reference/compose-file/services/), joihin lisäät dokumentaatioissa mainitut vaaditut ympäristömuuttujat. Löydät vinkit vaadituista ympäristömuuttujista myös `docker compose up`-komennon tuottamista virheilmoituksista. Valinnaisia ympäristömuuttujia ei tarvitse asettaa, joten yksinkertaisimmillaan muuttujia tarvitsee määritellä vain muutama.
+* [loki](https://grafana.com/oss/loki/) for log aggregation
+* [prometheus](https://prometheus.io/) for metrics collection
+* [grafana](https://grafana.com/) for visualization of metrics and logs
+* [alloy](https://grafana.com/oss/alloy-opentelemetry-collector/) as a metrics and logs collector.
 
-Kun olet asettanut vaaditut ympäristömuuttujat, suorita `docker compose up`-komento uudestaan. `database`-kontin pitäisi nyt tulostaa lokiin teksti `database system is ready to accept connections` ja `database-admin` pitäisi tulostaa `[INFO] Listening at: http://[::]:80 (1)`. Huomaa, että pgAdmin-kontin ensimmäinen käynnistys vie melko kauan aikaa.
+The setup is based on the [Monitor Docker containers with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) section in Grafana documentation. The [Docker compose file](./docker-monitoring/docker-compose.yml) and [configuration files](./docker-monitoring/) have been copied from the [Grafana Alloy Scenarios repository](https://github.com/grafana/alloy-scenarios/).
 
-💡 *Salasanojen ja käyttäjätunnusten tallentaminen YAML-tiedostoon ja niiden lisääminen versionhallintaan on yleisesti ottaen huono idea. Korjaamme tämän ongelman tehtävän myöhemmässä osassa.*
-
-
-## Osa 2: volumet (20 %)
-
-### `/var/lib/postgresql/data`
-
-Haluamme seuraavaksi, että postgreSQL-tietokannan data säilyy tallessa konttien pysäyttämisestä tai poistamisesta riippumatta. Tämä onnistuu käyttämällä Dockerin **volumea**, joka säilyttää tiedot host-järjestelmässä.
-
-Määrittele siis tietokantapalvelulle `volume`, jossa kontin sisään polkuun `/var/lib/postgresql/data` liitetään kontin ulkopuolinen volume. Näin tietokannan tiedot säilyvät myös mahdollisen kontin poistamisen jälkeen. Löydät lisää ohjeita tähän esimerkiksi artikkelista [How to Use the Postgres Docker Official Image](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/).
-
-### `/docker-entrypoint-initdb.d/`
-
-PostgreSQL mahdollistaa tietokannan alustamisen automaattisesti, kun se käynnistetään ensimmäistä kertaa. Tästä ominaisuudesta käytetään dokumentaatiossa termiä **initialization script**. Käytännössä kontti käy ensimmäistä kertaa käynnistyessään läpi tietyssä hakemistossa olevat sql-, ja sh-skriptit, joiden avulla saamme alustettua tietokannan sisällön haluttuun alkutilaan:
-
-> *"If you would like to do additional initialization in an image derived from this one, add one or more \*.sql, \*.sql.gz, or \*.sh scripts under /docker-entrypoint-initdb.d (creating the directory if necessary). After the entrypoint calls initdb to create the default postgres user and database, it will run any \*.sql files, run any executable \*.sh scripts, and source any non-executable \*.sh scripts found in that directory to do further initialization before starting the service."*
->
-> Initialization scripts. https://hub.docker.com/_/postgres
-
-Tässä tehtävässä haluamme lisätä tietokantapalvelimelle automaattisesti **Chinook-esimerkkitietokannan**, jonka luontiskripti löytyy valmiiksi tämän repositorion [`sql`-hakemistosta](./sql/). Liitä siis host-koneen `./sql`-hakemisto tietokantapalvelun sisään hakemistoksi `/docker-entrypoint-initdb.d/`, jolloin tietokanta alustetaan automaattisesti.
-
-### Uudelleenkäynnistys
-
-Lopuksi sulje käynnistämäsi palvelut `docker compose down` -komennolla ja käynnistä ne uudelleen `docker compose up` -komennolla. Tällä kertaa terminaaliin pitäisi ilmestyä lukuisia lokirivejä `postgres`-palvelusta, jossa kerrotaan, että tietokantaan luodaan tauluja ja rivejä (*CREATE TABLE* ja *INSERT*).
-
-> [!TIP]
-> Lisää molemmat volumet kerralla YAML-tiedostoon ja käynnistä palvelut vasta sitten. Jos määrittelet ensin `/var/lib/postgresql/data`-volumen ja käynnistät tietokannan, tietokanta alustetaan tyhjäksi, eikä myöhemmillä käynnistyskerroilla alustusskripteillä ole enää vaikutusta.
->
-> Jos näin pääsi kuitenkin jo käymään, ja tietokanta on alustettu tyhjänä, voit poistaa volumet ja käynnistää palvelut vielä kerran uudelleen:
->
-> ```sh
-> docker compose down --volumes
-> docker compose up
-> ```
+> [!WARNING]
+> By default, this setup does not include any authentication, so anyone who can access the Grafana web interface can also view the logs and metrics. This is acceptable for local development and testing, but in a production environment, you should always enable authentication and restrict access to authorized users only.
 
 
-## Osa 3: `exec`, `psql` ja tietokantakyselyt (20 %)
+## Starting the monitoring stack
 
-Edellisessä kohdassa käytetty **Chinook** on avoimella [MIT-lisenssillä](https://github.com/lerocha/chinook-database/blob/master/LICENSE.md) julkaistu esimerkkitietokanta, joka sisältää musiikkikaupan tietoja, kuten artisteja, albumeita, kappaleita ja asiakkaita. Se on suunniteltu tarjoamaan realistinen mutta yksinkertainen tietokantarakenne, joka on hyödyllinen SQL-kyselyiden ja tietokannan hallinnan harjoitteluun. Tässä tehtävässä Chinook-tietokantaa käytetään, koska sen sisältö on monipuolinen ja helposti ymmärrettävä.
-
-Kun olet käynnistänyt [docker-compose.yml](./docker-compose.yml)-tiedostossa määritellyt kontit, ne näkyvät Dockerin komennoilla aivan kuten ilman composea käynnistetyt kontit. Suorita siis `docker ps`-komento ja varmista, että kontit ovat käynnissä. PostgreSQL-kontin nimeksi (*container_name*) on YAML-tiedostossa määritetty `database`, joten voit käynnistää itsellesi bash-komentorivin kyseisen kontin sisälle seuravalla komennolla:
-
-```
-docker exec -it database /bin/bash
-root@a1b2c3d4:/#
-```
-
-PostgreSQL-tietokannan käyttämiseksi komentorivillä voidaan hyödyntää `psql`-työkalua. `psql` mahdollistaa mm. kyselyiden suorittamisen ja muiden tietokantaoperaatioiden tekemisen komentoriviltä, mikä on usein hyödyllistä erityisesti kehitysvaiheessa. `psql` tulee valmiiksi asennettuna PostgreSQL:n virallisessa Docker-imagessa.
-
-Kun olet saanut bash-komentokehotteen auki, eli näet yllä olevaa esimerkkiä vastaavan kehotteen, voit käyttää `psql`-työkalua joko interaktiivisessa tilassa tai suorittamalla `-c`-komennolla yksittäisiä kyselyjä. Kokeile suorittaa seuraava kysely, jossa tietokannasta etsitään kaikki kappaleet, joiden nimessä esiintyy joko `hello` tai `world`:
+To get started, follow the instructions in the [Monitor Docker containers with Grafana Alloy
+](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) article. Start by starting the monitoring stack:
 
 ```sh
-# jos käyttäjänimi löytyy $POSTGRES_USER -muuttujasta:
-psql -U $POSTGRES_USER -d chinook_auto_increment -c "SELECT name FROM Track WHERE name ILIKE '%hello%' OR name ILIKE '%world%'"
+cd docker-monitoring
+docker compose up -d
 ```
 
-Huomaa, että yllä `-U`-parametrin avulla annetaan tietokannan käyttäjätunnus. Jos määrittelit käyttäjätunnuksen compose-tiedoston ympäristömuuttujiin, voit käyttää sitä tässä. Muussa tapauksessa käytä oletustunnusta `postgres`:
+Verify that you have containers running:
 
 ```sh
-# jos et asettanut muuttujaa (oletuskäyttäjänimi `postgres`)
-psql -U postgres -d chinook_auto_increment -c "SELECT name FROM Track WHERE name ILIKE '%hello%' OR name ILIKE '%world%'"
+docker ps
 ```
 
-**Tallenna komennon tulostama lista kappaleiden nimistä [hello-world.txt](./hello-world.txt)-tiedostoon.**
+The output should show containers for `alloy`, `loki`, `prometheus`, and `grafana`.
 
-💡 *Voit tallentaa tulosteen joko kopioimalla tekstin leikepöydälle ja liittämällä sen tiedostoon. Vaihtoehtoisesti voit myös ohjata tulosteen suoraan tiedostoon käyttämällä `>`-operaattoria. Jos ohjaat tulosteen tiedostoon, voit kopioida tiedoston "ulos" kontista [`docker cp`-komennolla](https://docs.docker.com/reference/cli/docker/container/cp/). `hello-world.txt`-tiedosto voitaisiin liittää konttiin myös volumen avulla, mutta tämä ei ole pakollista.*
+Then, open [http://localhost:3000](http://localhost:3000) in your web browser to access the Grafana web interface. 
 
-
-## Osa 4: porttien avaaminen (20 %)
-
-PostgreSQL-kontti kuuntelee oletuksena porttia **5432** ja pgadmin4-kontti porttia **80**. Julkaise nämä portit konteista host-koneelle asettamalla [docker-compose.yml](./docker-compose.yml)-tiedostoon `ports`-määritykset molemmille palveluille.
-
-> [!TIP]
-> Voit käyttää host-koneella mitä vain portteja: niiden ei tarvitse olla samat kuin konttien sisäiset portit. Voit myös määritellä portit kuuntelemaan vain `127.0.0.1`-verkkoa, jolloin näiden konttien ei *pitäisi* näkyä koneesi ulkopuolelle.
-
-Voit nyt kokeilla käynnistää palvelut `docker compose up`-komennolla. Nyt sinulla pitäisi olla pääsy pgAdmin-kontin web-käyttöliittymään verkkoselaimesi avulla käyttämällä host-koneen porttia, jonka määrittelit `database-admin`-palvelulle. Huomaa, että pgadmin-palvelun ensimmäinen käynnistys kestää melko kauan, joten odota vähintään kunnes terminaalissa kerrotaan, että se kuuntelee sisäisesti porttia 80.
-
-
-## Osa 5: pgAdmin 4
-
-[**pgAdmin 4**](https://www.pgadmin.org/) on web-pohjainen graafinen hallintatyökalu PostgreSQL-tietokannan hallintaan. Sen avulla kehittäjät voivat suorittaa SQL-kyselyitä, tarkastella tietokantatauluja, sekä hallita käyttäjiä ja tietokannan asetuksia ilman tarvetta käyttää esimerkiksi komentorivityökaluja.
-
-> *pgAdmin is a management tool for [PostgreSQL](https://www.postgresql.org/) and derivative relational databases such as [EnterpriseDB's](https://www.enterprisedb.com/) EDB Advanced Server. It may be run either as a web or desktop application. For more information on the features offered, please see the [Features](https://www.pgadmin.org/features/) and [Screenshots](https://www.pgadmin.org/screenshots/) pages.*
+> *"To explore metrics, open your browser and go to http://localhost:3000/explore/metrics.*
 >
-> What is pgAdmin 4? https://www.pgadmin.org/faq/
-
-Kokeile kirjautua sisään pgAdmin-työkaluun nettiselaimellasi käyttämällä sähköpostiosoitetta ja salasanaa, jotka määrittelit ympäristömuuttujiin. Itse pgAdmin-työkaluun kirjautuminen ei vielä muodosta yhteyttä tietokantaan, vaan yhteys pitää määritellä erikseen. Samassa Docker compose -tiedostossa määritellyt palvelut voivat oletuksena ottaa toisiinsa yhteyksiä suoraan palveluiden nimiä käyttäen, joten käytä tietokannan yhteysosoitteena nimeä `postgres`. Käyttäjätunnuksena sekä salasanana käytä itse edellisissä kohdissa määrittämiäsi tunnuksia.
-
-Löydät ohjeita pgAdmin-työkalun käyttämiseksi hakukoneilla sekä työkalun omasta dokumentaatiosta. Voit aloittaa esimerkiksi videosta [pgAdmin Tutorial - How to Use pgAdmin (YouTube, Database Star)](https://youtu.be/WFT5MaZN6g4?feature=shared&t=160). Tätä tehtävää tehdessäsi sinun ei kuitenkaan tarvitse käyttää pgAdmin-työkalua tietokannan käsittelemiseksi, vaan riittää, että kirjaudut sisään ja saat yhteyden muodostettua onnistuneesti.
-
-🔐 *Tuotantokäytössä tietokantojen hallinta tehdään yleensä muilla tavoilla, kuten komentorivityökaluilla tai automatisoiduilla prosesseilla, eikä graafista käyttöliittymää välttämättä käytetä. Mikäli tuotantopalvelussa olisi käytössä pgAdmin tai vastaava hallintatyökalu, pääsyä siihen kannattaisi rajoittaa erityisen huolellisesti.*
+> *To use the Grafana Logs Drilldown, open your browser and go to http://localhost:3000/a/grafana-lokiexplore-app."*
+> 
+> https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/#visualize-your-data
 
 
-### 🚀 Extra: pgAdmin ja servers.json
+## Starting the application stack
 
-Tietokantapalvelimen asetukset on mahdollista lisätä pgAdmin-työkaluun automattisesti siten, että sinun ei tarvitse syöttää niitä käsin web-käyttöliittymään. Tämä onnistuu `/pgadmin4/servers.json`-tiedoston avulla, joka voidaan lisätä konttiin volumena. Löydät lisätietoja `servers.json`-tiedoston käyttämisestä Docker compose -työkalun kanssa [tästä StackOverflow-keskustelusta](https://stackoverflow.com/a/64626964). Voit halutessasi määritellä tietokannan asetukset tiedoston avulla.
+The application stack requires a few environment variables to be set. Examples of these are provided in the [.env.example](./.env.example) files. Before starting the application stack, copy the example file to a new file named `.env` and edit it to set the required environment variables:
 
-Tässä tehtävärepositoriossa on valmiina [servers.json-esimerkkitiedosto](./servers.json), jota voit halutessasi käyttää pohjana. Tiedostoon määritetty käyttäjänimi tulee päivittää, mikäli asetit edellisissä vaiheissa nimeksi muun kuin `postgres`. JSON-tiedoston formaatin kuvaus löytyy [pgAdmin-työkalun omista ohjeista](https://www.pgadmin.org/docs/pgadmin4/latest/import_export_servers.html#json-format).
+```sh
+# at the same folder as this readme.md file:
+cp .env.example .env
+```
 
-Huomaa, että `servers.json`-tiedoston muutokset eivät astu voimaan automaattisesti jo olemassa oleviin kontteihin, joten joudut luomaan kontin uudelleen (`docker compose down`) lisättyäsi volumen:
+PostgreSQL uses the environment variables to create the initial database and user. If you later change these environment variables, the changes won't effect the existing database or user.
 
-> *"Note that server definitions are only loaded on first launch, i.e. when the configuration database is created, and not on subsequent launches using the same configuration database."*
+After setting up the environment variables, use Docker compose to start the application stack:
+
+```sh
+docker compose up -d
+```
+
+On first startup, the stack will take a while to start, as the app container needs to be built from the [Dockerfile](./app/Dockerfile) and base images need to be downloaded. The PostgreSQL container will also initialize the database with the Chinook example database, as the [sql](./sql/) folder is mounted as a volume to the container in the [initialization scripts folder](https://hub.docker.com/_/postgres#initialization-scripts).
+
+You can check the status of your containers with either `docker stats`, `docker ps` or `docker compose ps` commands:
+
+```sh
+# shows resource usage statistics of running containers:
+docker stats
+
+# shows a list of running containers:
+docker ps
+
+# shows a list of containers defined in the current compose file:
+docker compose ps
+```
+
+You will likely notice that the `app` container is not running properly. Use the [Grafana log explorer](http://localhost:3000/a/grafana-lokiexplore-app) to investigate the logs of the `app` and `postgres` containers and the and find out what is wrong and what caused the `app` container to crash. Pay special attention in the timestamps of the log entries, or show both containers' logs at the same time.
+
+If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
+
+
+## Monitor the postgres container with Docker (30 %)
+
+As it turns out, both of the containers start at the exact same time, and the `app` container tries to connect to the `postgres` container before it is ready to accept connections. The connection is refused, and the `app` container crashes.
+
+The startup order of containers is often important and it can be controlled in the `docker-compose.yml` file with the `depends_on` directive. However, this only ensures that the `postgres` container is started before the `app` container, but it does not guarantee that the database server inside the `postgres` container is ready to accept connections.
+
+Follow the instruction in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document in Docker documentation to add a healthcheck to the `postgres` service in the [docker-compose.yml](./docker-compose.yml) file. Also, add a `depends_on` directive to the `app` service to ensure that it starts only after the `postgres` service is healthy.
+
+The steps to take are exactly the same as in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document, only the service names are different. Our environment variables `${POSTGRES_USER}` and `${POSTGRES_DB}` also match the names used in the example.
+
+When you have made changes, restart the application stack with:
+
+```sh
+docker compose down
+docker compose up -d
+```
+
+If the changes are effective, when you run `docker ps`, you should see the `app` container running properly and the `postgres` container should have the word `(healthy)` in the `STATUS` column.
+
+
+## Try out the application
+
+You can now try out the application by opening [http://localhost:3333](http://localhost:3333) in your web browser. You should see hello world text.
+
+The application has two additional routes:
+
+* [http://localhost:3333/artists](http://localhost:3333/artists?pretty): Lists all artists in the database
+* [http://localhost:3333/artists/1](http://localhost:3333/artists/1?pretty): Shows details of the artist with ids from [1](http://localhost:3333/artists/1?pretty) to [275](http://localhost:3333/artists/275?pretty).
+
+You can use either your browser or a command line tool like `curl` to access these routes. Add a `?pretty` query parameter to get pretty-printed JSON responses:
+
+```sh
+curl http://localhost:3333/artists?pretty
+curl http://localhost:3333/artists/1?pretty
+```
+
+Keep your eye on the Grafana log explorer while you access the application. You should see log entries from both the `app` and `postgres` containers. You can also use the [Grafana metrics explorer](http://localhost:3000/explore/metrics) to explore metrics collected from Docker, although with this much traffic, the metrics are quite static.
+
+
+## A bug in the application
+
+Unfortunately, the application has issues. The following email from your product owner explains the situation:
+
+> Hi,
+> 
+> We have received reports from users that the application sometimes becomes partly unresponsive. We need to investigate this issue and ensure that the application is stable and reliable. Restarting the application seems to temporarily fix the issue, but it always reoccurs after some time.
 >
-> /pgadmin4/servers.json. https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html#mapped-files-and-directories
-
-
-## Osa 6: salaisuuksien hallinta .env-tiedoston avulla (20 %)
-
-Salaisuuksien, kuten käyttäjätunnusten ja salasanojen, säilyttäminen suoraan Docker compose -tiedostossa ei ole turvallista, sillä tiedosto on tarkoitus tallentaa versionhallintaan ja sitä on tarkoitus jakaa eri tahojen välillä. Toisaalta eri ympäristöissä tarvitaan myös tyypillisesti eri asetuksia, joten myös siksi on hyvä, että muuttuvaa tietoa ei kovakoodata. Ympäristömuuttujat tuleekin seuraavaksi siirtää `.env`-nimiseen tiedostoon, jota ei lisätä versionhallintaan. `.env` on jo valmiiksi mainittuna tämän tehtävän [.gitignore](./.gitignore)-tiedostossa, joten sen ei pitäisi päätyä versionhallintaan vahingossa.
-
-**Luo uusi .env-niminen tiedosto** tähän hakemistoon ja lisää sinne molempien palveluiden tarvitsemat salaisuudet, esimerkiksi muodossa:
-
-```
-# These are just sample passwords, never use them in a real project
-
-# postgres
-POSTGRES_USER=null_pointer_expert
-POSTGRES_PASSWORD=zt7kYOwBv527uFLj5bf5M3K4SIIhcP01
-
-# pgadmin
-PGADMIN_DEFAULT_EMAIL=datasaurus_rex@example.com
-PGADMIN_DEFAULT_PASSWORD=Xjyl7THN5Kiz86F7PI7mz1s6Yf436GtD
-```
-
-**Päivitä docker-compose.yml-tiedosto** käyttämään ympäristömuuttujia `.env`-tiedostosta. Lisää siis `env_file`-lohkot molemmille palveluille. Korvaa lisäksi kovakoodatut arvot viittauksilla ympäristömuuttujiin, tai voit myös poistaa yksittäiset muuttujat kokonaan YAML-tiedostosta:
-
-```yaml
-services:
-  postgres:
-    image: postgres:latest
-    container_name: database
-
-    ...
-
-    env_file: ".env"
-...
-```
-
-Löydät aiheesta lisää tietoa esimerkiksi [Docker compose:n ohjeista](https://docs.docker.com/compose/environment-variables/set-environment-variables/#use-the-env_file-attribute).
-
-💡 *Docker compose:n avulla voisit käyttää myös eri .env-tiedostoja eri palveluille. Tämän tehtävän automaattisen tarkastamisen kannalta on kuitenkin tärkeää, että käytät vain ja ainoastaan `.env`-nimistä tiedostoa.*
-
-
-> [!IMPORTANT]
-> Jos käytät tässä vaiheessa eri käyttäjätunnuksia tai salasanoja kuin aikaisemmin, joudut mahdollisesti luomaan kontit uudestaan (`docker compose down`) ja poistamaan volumen (`docker volume rm`), jotta muutokset astuvat voimaan. Tämä johtuu siitä, että ympäristömuuttujina annettavia salasanoja käytetään esimerkiksi tietokannan alustuksessa, eikä ympäristömuuttujan vaihtaminen muuta talteen asetettuja käyttäjätietoja.
+> The front page with the "Hello World!" message seems to work fine, and the container itself is running without crashing, but the */artists* and */artists/:id* routes get "stuck" and stop returning responses. We need to find out what is causing these issues and fix them as soon as possible.
 >
-> > *"the Docker specific variables will only have an effect if you start the container with a data directory that is empty; any pre-existing database will be left untouched on container startup.*"
-> >
-> > postgres. Docker Official Image. https://hub.docker.com/_/postgres
+> In our production logs, we noticed that there are always a few 404 errors for the */artists/:id* route before the application becomes unresponsive. This might be a clue to the root cause of the problem. Other 404 errors, such as the one with favicon.ico, do not seem to cause any issues.
+>
+> Please try to reproduce the issue in your development environment and investigate the logs and metrics to identify the problem. We need to ensure that the application is stable and reliable for our users.
+
+Use the Grafana log explorer to investigate the logs from the `app` container. Make both queries that work and those that return 404 errors. See if there are any differences in the logs between the working and non-working requests. Keep making requests until the application becomes unresponsive.
 
 
-## Ratkaisujen lähettäminen
+### Finding the root cause
 
-Kun olet saanut osan tai kaikki tehtävistä ratkaistua ja commitoinut vastauksesi, lähetä ratkaisut arvioitavaksi `git push`-komennolla. Git push käynnistää automaattisesti workflow:n, joka testaa kaikki komentosi ja antaa niistä joko hyväksytyn tai hylätyn tuloksen.
+Copy the relevant log entries from the application logs to the [app-log.txt](./app-log.txt). Include both entries before and after the application becomes unresponsive. You can copy the log entries either by copying them from the Grafana log explorer or by using the `docker logs` command:
 
-Kun GitHub Actions on saanut ratkaisusi tarkastettua, näet tuloksen GitHub-repositoriosi [Actions-välilehdellä](../../actions/workflows/classroom.yml). Arvioinnin valmistumiseen kuluu tyypillisesti pari minuuttia.
+```sh
+docker logs app
+```
 
-Klikkaamalla yllä olevan linkin takaa viimeisintä "GitHub Classroom Workflow" -suoritusta, saat tarkemmat tiedot tehtävän arvioinnista. Sivun alaosassa näkyy saamasi pisteet. Klikkaamalla "Autograding"-otsikkoa pääset katsomaan tarkemmin arvioinnissa suoritetut vaiheet ja niiden tulokset.
+If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
 
 
-# Lisenssit
+## Monitor the app container with Docker (30 %)
+
+As the product owner mentioned in the message, this issue can be temporarily fixed by restarting the application, which releases all database connections. The issue will reoccur after some time, but for now we can use this workaround to at least keep the application running.
+
+To mitigate this issue, configure Docker compose to monitor the `app` container's health and automatically restart it if it becomes unresponsive. This check can be similar to the one used for the `postgres` container. In this case, you want to check that the application returns a successful response for either of the routes that access the database. 
+
+The check can be implemented, for example, by calling the `/artists` route with the `curl` command. A similar example can be found in the [Docker documentation](https://docs.docker.com/reference/compose-file/services/#healthcheck) with a code snippet that uses `curl` to check a web service. Fortunately, the `curl` command is already included in the official Node.js Docker image, so you don't need to install it separately.
+
+Add a healthcheck to the `app` service in the [docker-compose.yml](./docker-compose.yml) file. Feel free to choose appropriate intervals, timeouts and other attributes. Also, add a [`restart` policy](https://docs.docker.com/reference/compose-file/services/#restart) to ensure that the container is restarted if it becomes unhealthy.
+
+When you have made changes, restart the application stack with:
+
+```sh
+docker compose down
+docker compose up -d
+```
+
+Now, inspect the logs in the Grafana log explorer and repeat the steps that previously lead to the application becoming unresponsive. If the healthcheck and restart policy are effective, the `app` container should be automatically restarted when it becomes unresponsive, and the application should recover without manual intervention.
+
+
+## Submitting your solutions
+
+Once you have solved part or all of the tasks and committed your answers, submit your solutions for evaluation using the `git push` command. Git push will automatically trigger a workflow that checks your submission.
+
+After GitHub Actions has checked your solution, you can see the result on your repository's actions tab.
+
+
+# Licenses
 
 ## Docker
 
@@ -248,6 +223,7 @@ is required."
 >
 > https://docs.docker.com/engine/
 
+
 ## PostgreSQL
 
 > "PostgreSQL is released under the PostgreSQL License, a liberal Open Source license, similar to the BSD or MIT licenses."
@@ -255,20 +231,18 @@ is required."
 > https://www.postgresql.org/about/licence/
 
 
-## pgAdmin
+## Chinook database
 
-> "pgAdmin 4 is released under the PostgreSQL licence."
->
-> https://www.pgadmin.org/licence/
+Chinook database is created by [Luis Rocha](https://github.com/lerocha) and it is licensed under the [MIT license](https://github.com/lerocha/chinook-database/blob/master/LICENSE.md).
 
 
-## Chinook-tietokanta
+## Grafana Alloy Scenarios
 
-Chinook-tietokannan on luonut [Luis Rocha](https://github.com/lerocha) ja se on lisensoitu [MIT-lisenssillä](https://github.com/lerocha/chinook-database/blob/master/LICENSE.md).
+The [Grafana Alloy Scenarios](https://github.com/grafana/alloy-scenarios/) project is licensed under the [Apache 2.0 License](https://github.com/grafana/alloy-scenarios/blob/main/LICENSE).
 
 
-## Tämä oppimateriaali
+## This exercise
 
-Tämän tehtävän on kehittänyt Teemu Havulinna ja se on lisensoitu [Creative Commons BY-NC-SA -lisenssillä](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+This exercise is made by Teemu Havulinna and it is licensed under the [Creative Commons BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.
 
-Tehtävänannon, lähdekoodien ja testien toteutuksessa on hyödynnetty ChatGPT-kielimallia sekä GitHub copilot -tekoälyavustinta.
+AI assistants, such as ChatGPT and GitHub copilot, have been used to implement the exercise.
