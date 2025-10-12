@@ -1,54 +1,44 @@
 {
     "tests": [
         {
-            "name": "1. Environment variables",
-            "setup": "cp .github/classroom/test.env .env",
-            "run": "docker compose config | python3 .github/classroom/ex1-environment.py",
+            "name": "App depends on Postgres",
+            "setup": "cp .env.example .env",
+            "run": "docker compose config",
             "input": "",
-            "output": "",
+            "output": "depends_on",
             "comparison": "included",
             "timeout": 1,
             "points": 20
         },
         {
-            "name": "2. Volumes",
-            "setup": "",
-            "run": "docker compose config | python3 .github/classroom/ex2-volumes.py",
+            "name": "Postgres needs to be healthy before app starts",
+            "setup": "cp .env.example .env",
+            "run": "docker compose config",
             "input": "",
-            "output": "",
+            "output": "service_healthy",
             "comparison": "included",
             "timeout": 1,
             "points": 20
         },
         {
-            "name": "3. Exec psql",
-            "setup": "",
-            "run": "cat hello-world.txt | python3 .github/classroom/ex3-exec-psql.py",
+            "name": "Postgres has a healthcheck",
+            "setup": "cp .env.example .env",
+            "run": "docker compose config",
             "input": "",
-            "output": "",
+            "output": "healthcheck",
             "comparison": "included",
             "timeout": 1,
             "points": 20
         },
         {
-            "name": "4. Ports",
+            "name": "App log investigated in app-log.txt",
             "setup": "",
-            "run": "docker compose config | python3 .github/classroom/ex4-ports.py",
+            "run": "cat app-log.txt | tr -cd '[:print:]\n'",
             "input": "",
-            "output": "",
+            "output": "database",
             "comparison": "included",
             "timeout": 1,
-            "points": 20
-        },
-        {
-            "name": "6. Env files",
-            "setup": "",
-            "run": "docker compose config | python3 .github/classroom/ex6-env-files.py",
-            "input": "",
-            "output": "",
-            "comparison": "included",
-            "timeout": 1,
-            "points": 20
+            "points": 40
         }
     ]
 }

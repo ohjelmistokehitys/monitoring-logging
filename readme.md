@@ -2,7 +2,9 @@
 
 This exercise will introduce you to centralized logging and monitoring of applications. Logging and monitoring are essential parts of modern software development and operations, as they help in understanding application behavior, diagnosing issues, and ensuring system reliability. 
 
-Setting up a monitoring and logging stack can be complex, so this exercise provides a ready-made infrastructure where you can try out these tools. This exercise does not contain an in-depth introduction to the tools used, but you can find links to their documentation below. Find sources and tutorials about these tools online, and explore their features. The goal of this exercise is to get you familiar with a minimal set of tools and concepts, so you can continue learning on your own.
+Setting up a monitoring and logging stack can be complex, so this exercise provides a ready-made infrastructure where you can try out these tools. This exercise does not contain an in-depth introduction to the tools used, but you can find links to their documentation below.
+
+Find sources and tutorials about these tools online, and explore their features. The goal of this exercise is to get you familiar with a minimal set of tools and concepts, so you can continue learning on your own.
 
 
 ## The infrastructure
@@ -56,8 +58,7 @@ The setup is based on the [Monitor Docker containers with Grafana Alloy](https:/
 
 ## Starting the monitoring stack
 
-To get started, follow the instructions in the [Monitor Docker containers with Grafana Alloy
-](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) article. Start by starting the monitoring stack:
+To get started, follow the instructions in the [Monitor Docker containers with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) article. Start by starting the monitoring stack:
 
 ```sh
 cd docker-monitoring
@@ -118,13 +119,14 @@ You will likely notice that the `app` container is not running properly. Use the
 If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
 
 
-## Monitor the postgres container with Docker (30 %)
+## Fixing the startup order of containers
 
 As it turns out, both of the containers start at the exact same time, and the `app` container tries to connect to the `postgres` container before it is ready to accept connections. The connection is refused, and the `app` container crashes.
 
 The startup order of containers is often important and it can be controlled in the `docker-compose.yml` file with the `depends_on` directive. However, this only ensures that the `postgres` container is started before the `app` container, but it does not guarantee that the database server inside the `postgres` container is ready to accept connections.
 
 Follow the instruction in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document in Docker documentation to add a healthcheck to the `postgres` service in the [docker-compose.yml](./docker-compose.yml) file. Also, add a `depends_on` directive to the `app` service to ensure that it starts only after the `postgres` service is healthy.
+
 
 The steps to take are the same as in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document. Be careful to apply the example with the service names and [environment variables](./.env.example) from our application.
 
@@ -185,24 +187,28 @@ docker logs app
 If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
 
 
-## Monitor the app container with Docker (30 %)
+## Monitor the app container health
 
 As the product owner mentioned in the message, this issue can be temporarily fixed by restarting the application, which releases all database connections. The issue will reoccur after some time, but for now we can use this workaround to at least keep the application running.
 
-To mitigate this issue, configure Docker compose to monitor the `app` container's health and automatically restart it if it becomes unresponsive. This check can be similar to the one used for the `postgres` container. In this case, you want to check that the application returns a successful response for either of the routes that access the database. 
+To mitigate this issue, configure Docker compose to monitor the `app` container's health. This check can be similar to the one used for the `postgres` container. In this case, you want to check that the application returns a successful response for either of the routes that access the database. 
 
-The check can be implemented, for example, by calling the `/artists` route with the `curl` command. A similar example can be found in the [Docker documentation](https://docs.docker.com/reference/compose-file/services/#healthcheck) with a code snippet that uses `curl` to check a web service. Fortunately, the `curl` command is already included in the official Node.js Docker image, so you don't need to install it separately.
+The check can be implemented, for example, by calling the `/artists` route with the `curl` command. A similar example can be found in the [Docker documentation](https://docs.docker.com/reference/compose-file/services/#healthcheck) with a code snippet that uses `curl` to check a web service. The example in the documentation has one severe weakness: it does not have a timeout, so it would not fail if the application does not respond. Make sure to add a timeout to your `curl` command.
 
-Add a healthcheck to the `app` service in the [docker-compose.yml](./docker-compose.yml) file. Feel free to choose appropriate intervals, timeouts and other attributes. Also, add a [`restart` policy](https://docs.docker.com/reference/compose-file/services/#restart) to ensure that the container is restarted if it becomes unhealthy.
-
-When you have made changes, restart the application stack with:
+Fortunately, the `curl` command is already included in the base image, so you can use it without modifying the image. Add a healthcheck to the `app` service in the [docker-compose.yml](./docker-compose.yml) file. Feel free to choose appropriate intervals, timeouts and other attributes. When you have made changes, restart the application stack with:
 
 ```sh
 docker compose down
 docker compose up -d
 ```
 
-Now, inspect the logs in the Grafana log explorer and repeat the steps that previously lead to the application becoming unresponsive. If the healthcheck and restart policy are effective, the `app` container should be automatically restarted when it becomes unresponsive, and the application should recover without manual intervention.
+Now, if the application becomes unresponsive and the healthcheck fails, the status of the `app` container will change to `unhealthy`. You can see this by running the `docker ps` command:
+
+```sh
+docker ps
+```
+
+Wit the *unhealthy* status, you could configure an orchestrator like Kubernetes or Docker Swarm to automatically restart the container. Sadly, at the time of writing, Docker compose does not support automatic restarts on failed healthchecks. 
 
 
 ## Submitting your solutions
