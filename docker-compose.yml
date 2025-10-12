@@ -9,14 +9,18 @@ services:
       # mount initialization scripts to set up the database schema and seed data
       - ./sql/:/docker-entrypoint-initdb.d
     ports:
-      - 5432:5432
+      # only listen on localhost for added security.
+      # remove 127.0.0.1 to listen on all interfaces.
+      - 127.0.0.1:5432:5432
 
   app:
     build: ./app
     container_name: app
     env_file: .env
     ports:
-      - 3333:3333
+      # only listen on localhost for added security.
+      # remove 127.0.0.1 to listen on all interfaces.
+      - 127.0.0.1:3333:3333
 
 volumes:
   postgres:

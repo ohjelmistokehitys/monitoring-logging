@@ -27,6 +27,8 @@ Postgres container logs:
 
 In the initial phase, the app container starts and tries to connect to the database before the database is ready to accept connections.
 
+The solution is to add a `depends_on` condition to the `app` service in `docker-compose.yml` to ensure that the `app` service waits for the `postgres` service before starting. The starting order is not enough, though, as the database might take some time to be ready to accept connections. Therefore, we need to use the `condition: service_healthy` option to ensure that the `app` service waits until the `postgres` service is healthy. For this to work, we also need to add a healthcheck to the `postgres` service.
+
 
 # Why the app becomes unresponsive after some time?
 
@@ -61,3 +63,9 @@ When a request fails, there is only "Connecting to database..." log entry, but n
 ```
 
 This leads to all available connections being used up over time. When this happens, new requests to the `/artists` and `/artists/:id` routes cannot get a database connection, and they become unresponsive.
+
+The real fix to this issue would be to add proper `try/catch/finally` blocks to the code to ensure that database connections are always released back to the connection pool, even when an error occurs. It would also be possible to `pool.query(...)` instead of `pool.connect()` to avoid the need to manually release connections after use.
+
+In this exercise, however, there is no need to modify the application code.
+
+
