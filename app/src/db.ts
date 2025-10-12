@@ -1,13 +1,14 @@
-import { Pool, type PoolClient } from 'pg';
+import { Pool, type PoolClient, type PoolConfig } from 'pg';
 
-const pool = new Pool({
+const config: PoolConfig = {
     host: process.env.POSTGRES_HOST,
     port: +(process.env.POSTGRES_PORT || 5432),
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
-    database: process.env.POSTGRES_DB,
-    maxLifetimeSeconds: +(process.env.DB_CONNECTION_LIFETIME_SECONDS || 0)
-});
+    database: process.env.POSTGRES_DATABASE
+};
+
+const pool = new Pool(config);
 
 export const connect = () => {
     console.log('Connecting to database...');

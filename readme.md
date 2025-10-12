@@ -126,9 +126,9 @@ The startup order of containers is often important and it can be controlled in t
 
 Follow the instruction in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document in Docker documentation to add a healthcheck to the `postgres` service in the [docker-compose.yml](./docker-compose.yml) file. Also, add a `depends_on` directive to the `app` service to ensure that it starts only after the `postgres` service is healthy.
 
-The steps to take are exactly the same as in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document, only the service names are different. Our environment variables `${POSTGRES_USER}` and `${POSTGRES_DB}` also match the names used in the example.
+The steps to take are the same as in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document. Be careful to apply the example with the service names and [environment variables](./.env.example) from our application.
 
-When you have made changes, restart the application stack with:
+When you have made changes, restart the application stack with the `down` and `up` commands:
 
 ```sh
 docker compose down
