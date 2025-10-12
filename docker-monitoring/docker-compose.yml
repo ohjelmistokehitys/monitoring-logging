@@ -3,9 +3,9 @@ services:
   loki:
     image: grafana/loki:${GRAFANA_LOKI_VERSION:-3.5.2}
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100" # only listen on localhost for added security.
     volumes:
-     - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
     command: -config.file=/etc/loki/local-config.yaml
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION:-v3.5.0}
@@ -13,16 +13,16 @@ services:
       - --web.enable-remote-write-receiver
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090" # only listen on localhost for added security.
   grafana:
-   image: grafana/grafana:${GRAFANA_VERSION:-12.0.2}
-   environment:
-     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-     - GF_AUTH_ANONYMOUS_ENABLED=true
-     - GF_AUTH_BASIC_ENABLED=false
-   ports:
-     - 3000:3000/tcp
-   entrypoint:
+    image: grafana/grafana:${GRAFANA_VERSION:-12.0.2}
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+    ports:
+      - 127.0.0.1:3000:3000/tcp # only listen on localhost for added security.
+    entrypoint:
       - sh
       - -euc
       - |
@@ -51,15 +51,15 @@ services:
         /run.sh
 
   alloy:
-   image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.10.0}
-   privileged: true
-   ports:
-     - 12345:12345
-     - 4317:4317
-     - 4318:4318
-   environment:
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.10.0}
+    privileged: true
+    ports:
+      - 127.0.0.1:12345:12345 # only listen on localhost for added security.
+      - 127.0.0.1:4317:4317 # only listen on localhost for added security.
+      - 127.0.0.1:4318:4318 # only listen on localhost for added security.
+    environment:
       ALLOY_DEPLOY_MODE: docker
-   volumes:
+    volumes:
       - ./config.alloy:/etc/alloy/config.alloy
       - /proc:/rootproc:ro
       - /var/run/docker.sock.raw:/var/run/docker.sock
@@ -67,8 +67,8 @@ services:
       - /:/rootfs:ro
       - /dev/disk/:/dev/disk:ro
       - /var/lib/docker/:/var/lib/docker:ro
-   command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
-   extra_hosts:
-        - "host.docker.internal:host-gateway"
-   devices:
-        - /dev/kmsg
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    devices:
+      - /dev/kmsg
