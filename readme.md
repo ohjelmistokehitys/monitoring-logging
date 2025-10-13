@@ -62,7 +62,12 @@ To get started, follow the instructions in the [Monitor Docker containers with G
 
 ```sh
 cd docker-monitoring
+
+# on Windows:
 docker compose up -d
+
+# on Linux:
+docker compose -f docker-compose-linux.yml up -d
 ```
 
 Verify that you have containers running:
@@ -114,9 +119,9 @@ docker ps
 docker compose ps
 ```
 
-You will likely notice that the `app` container is not running properly. Use the [Grafana log explorer](http://localhost:3000/a/grafana-lokiexplore-app) to investigate the logs of the `app` and `postgres` containers and the and find out what is wrong and what caused the `app` container to crash. Pay special attention in the timestamps of the log entries, or show both containers' logs at the same time.
+You will likely notice that the `app` container is not running properly. Use the Grafana log explorer in your Grafana service, which was started earlier in the exercise: http://localhost:3000. Logs can be found on the menu from *Drilldown* and *Logs*. Investigate the logs of the `app` and `postgres` containers and find out what is wrong and what caused the `app` container to crash.
 
-If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
+Instructions on how to inspect logs in Grafana can be found, for example, on [Grafana documentation](https://grafana.com/docs/grafana/latest/explore/simplified-exploration/logs/get-started/) or [this YouTube video](https://youtu.be/eXwE2vqLcyY). If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
 
 
 ## Fixing the startup order of containers
