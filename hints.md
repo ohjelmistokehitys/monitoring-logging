@@ -1,6 +1,5 @@
 # Why does the app container crash immediately?
 
-
 When inspecting the logs, pay attention to the timestamps of the following log entries.
 
 App container logs:

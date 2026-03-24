@@ -123,15 +123,21 @@ You will likely notice that the `app` container is not running properly. Use the
 
 Instructions on how to inspect logs in Grafana can be found, for example, on [Grafana documentation](https://grafana.com/docs/grafana/latest/explore/simplified-exploration/logs/get-started/) or [this YouTube video](https://youtu.be/eXwE2vqLcyY). If you can't figure it out, check the explanation in the [hints and solutions](./hints.md) file.
 
+If you cannot see the `app` container in Grafana, it likely crashed before the logs were collected. In this case, you can view the logs at the command line:
+
+```sh
+# see the logs for the app container
+docker logs app
+```
+
 
 ## Fixing the startup order of containers
 
 As it turns out, both of the containers start at the exact same time, and the `app` container tries to connect to the `postgres` container before it is ready to accept connections. The connection is refused, and the `app` container crashes.
 
-The startup order of containers is often important and it can be controlled in the `docker-compose.yml` file with the `depends_on` directive. However, this only ensures that the `postgres` container is started before the `app` container, but it does not guarantee that the database server inside the `postgres` container is ready to accept connections.
+The startup order of containers is often important and it can be controlled in the `docker-compose.yml` file with the `depends_on` directive. However, this only ensures that the `postgres` container is *started* before the `app` container, but it does not guarantee that the database server inside the `postgres` container is *ready to accept connections*.
 
 Follow the instruction in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document in Docker documentation to add a healthcheck to the `postgres` service in the [docker-compose.yml](./docker-compose.yml) file. Also, add a `depends_on` directive to the `app` service to ensure that it starts only after the `postgres` service is healthy.
-
 
 The steps to take are the same as in the [Control startup and shutdown order in Compose](https://docs.docker.com/compose/how-tos/startup-order/) document. Be careful to apply the example with the service names and [environment variables](./.env.example) from our application.
 
@@ -213,7 +219,7 @@ Now, if the application becomes unresponsive and the healthcheck fails, the stat
 docker ps
 ```
 
-Wit the *unhealthy* status, you could configure an orchestrator like Kubernetes or Docker Swarm to automatically restart the container. Sadly, at the time of writing, Docker compose does not support automatic restarts on failed healthchecks. 
+With the *unhealthy* status, you could configure an orchestrator like Kubernetes or Docker Swarm to automatically restart the container. Sadly, at the time of writing, Docker compose does not support automatic restarts on failed healthchecks.
 
 
 ## Submitting your solutions
