@@ -1,6 +1,6 @@
 # Monitoring and logging
 
-This exercise will introduce you to centralized logging and monitoring of applications. Logging and monitoring are essential parts of modern software development and operations, as they help in understanding application behavior, diagnosing issues, and ensuring system reliability. 
+This exercise will introduce you to centralized logging and monitoring of applications. Logging and monitoring are essential parts of modern software development and operations, as they help in understanding application behavior, diagnosing issues, and ensuring system reliability.
 
 Setting up a monitoring and logging stack can be complex, so this exercise provides a ready-made infrastructure where you can try out these tools. This exercise does not contain an in-depth introduction to the tools used, but you can find links to their documentation below.
 
@@ -13,12 +13,14 @@ The exercise infrastructure consists of two separate Docker compose setups: one 
 
 There are many ports that need to be opened for the services to work properly. It is recommended that you stop any other potential services on your system that might use the same ports, or change the ports in the [docker-compose.yml](./docker-compose.yml) and [docker-monitoring/docker-compose.yml](./docker-monitoring/docker-compose.yml) files.
 
-> [!NOTE]
-> The monitoring stack integrates with the Docker daemon to collect logs and metrics from all running containers, including the application stack. This setup allows you to monitor the application's performance and view its logs in a centralized manner. 
+Running this exercise can be resource-intensive in terms of CPU, memory and disk space. We recommend running this exercise in a GitHub codespace or in a separate disposable environment, which you can remove after the exercise.
+
+> [!WARNING]
+> The monitoring stack integrates with the Docker daemon to collect logs and metrics from all running containers, including the application stack. This setup allows you to monitor the application's performance and view its logs in a centralized manner.
 >
-> However, all other containers on your system will also be monitored, so be aware of that.
+> In addition to the application stack in this exercise, the monitoring stack will also collect logs and metrics from all other containers running on your system. This may include containers from other projects. Take this into account if you are running this exercise on a system with possibly sensitive containers.
 >
-> If you want to avoid monitoring other containers on your system, you can run this exercise on [GitHub codespaces](https://github.com/features/codespaces) or in a separate virtual machine.
+> If you want to avoid monitoring other containers on your system, we recommend running this exercise on [GitHub codespaces](https://github.com/features/codespaces) or in a separate virtual machine.
 
 
 ### The application stack
@@ -50,7 +52,7 @@ The monitoring stack consists of several popular open-source tools:
 * [grafana](https://grafana.com/) for visualization of metrics and logs
 * [alloy](https://grafana.com/oss/alloy-opentelemetry-collector/) as a metrics and logs collector.
 
-The setup is based on the [Monitor Docker containers with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) section in Grafana documentation. The [Docker compose file](./docker-monitoring/docker-compose.yml) and [configuration files](./docker-monitoring/) have been copied from the [Grafana Alloy Scenarios repository](https://github.com/grafana/alloy-scenarios/).
+The setup is based on the [Monitor Docker containers with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) section in Grafana documentation. The [Docker compose file](./docker-monitoring/docker-compose.yml) and [configuration files](./docker-monitoring/) have been copied from the [Grafana Alloy Scenarios repository](https://github.com/grafana/alloy-scenarios/) and are licensed under the [Apache License, Version 2.0](https://github.com/grafana/alloy-scenarios/blob/main/LICENSE).
 
 > [!WARNING]
 > By default, this setup does not include any authentication, so anyone who can access the Grafana web interface can also view the logs and metrics. This is acceptable for local development and testing, but in a production environment, you should always enable authentication and restrict access to authorized users only.
@@ -63,11 +65,7 @@ To get started, follow the instructions in the [Monitor Docker containers with G
 ```sh
 cd docker-monitoring
 
-# on Windows:
 docker compose up -d
-
-# on Linux:
-docker compose -f docker-compose-linux.yml up -d
 ```
 
 Verify that you have containers running:
@@ -78,12 +76,12 @@ docker ps
 
 The output should show containers for `alloy`, `loki`, `prometheus`, and `grafana`.
 
-Then, open [http://localhost:3000](http://localhost:3000) in your web browser to access the Grafana web interface. 
+Then, open [http://localhost:3000](http://localhost:3000) in your web browser to access the Grafana web interface.
 
 > *"To explore metrics, open your browser and go to http://localhost:3000/explore/metrics.*
 >
 > *To use the Grafana Logs Drilldown, open your browser and go to http://localhost:3000/a/grafana-lokiexplore-app."*
-> 
+>
 > https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/#visualize-your-data
 
 
@@ -95,8 +93,6 @@ The application stack requires a few environment variables to be set. Examples o
 # at the same folder as this readme.md file:
 cp .env.example .env
 ```
-
-PostgreSQL uses the environment variables to create the initial database and user. If you later change these environment variables, the changes won't effect the existing database or user.
 
 After setting up the environment variables, use Docker compose to start the application stack:
 
@@ -175,7 +171,7 @@ Keep your eye on the Grafana log explorer while you access the application. You 
 Unfortunately, the application has issues. The following email from your product owner explains the situation:
 
 > Hi,
-> 
+>
 > We have received reports from users that the application sometimes becomes partly unresponsive. We need to investigate this issue and ensure that the application is stable and reliable. Restarting the application seems to temporarily fix the issue, but it always reoccurs after some time.
 >
 > The front page with the "Hello World!" message seems to work fine, and the container itself is running without crashing, but the */artists* and */artists/:id* routes get "stuck" and stop returning responses. We need to find out what is causing these issues and fix them as soon as possible.
@@ -202,7 +198,7 @@ If you can't figure it out, check the explanation in the [hints and solutions](.
 
 As the product owner mentioned in the message, this issue can be temporarily fixed by restarting the application, which releases all database connections. The issue will reoccur after some time, but for now we can use this workaround to at least keep the application running.
 
-To mitigate this issue, configure Docker compose to monitor the `app` container's health. This check can be similar to the one used for the `postgres` container. In this case, you want to check that the application returns a successful response for either of the routes that access the database. 
+To mitigate this issue, configure Docker compose to monitor the `app` container's health. This check can be similar to the one used for the `postgres` container. In this case, you want to check that the application returns a successful response for either of the routes that access the database.
 
 The check can be implemented, for example, by calling the `/artists` route with the `curl` command. A similar example can be found in the [Docker documentation](https://docs.docker.com/reference/compose-file/services/#healthcheck) with a code snippet that uses `curl` to check a web service. The example in the documentation has one severe weakness: it does not have a timeout, so it would not fail if the application does not respond. Make sure to add a timeout to your `curl` command.
 
