@@ -27,6 +27,20 @@ Running this exercise can be resource-intensive in terms of CPU, memory and disk
 
 The application stack includes a web application that connects to a PostgreSQL database. The application is built using the [Hono](https://hono.dev/) web framework and uses the [pg](https://node-postgres.com/) library to interact with the PostgreSQL database.
 
+```mermaid
+flowchart LR
+    browser["Client's browser"]
+
+    subgraph compose["Docker Compose"]
+        app["app (Node.js + Hono)"]
+        db[("postgres")]
+    end
+
+    browser -->|HTTP| app
+    app -->|SQL| db
+```
+
+
 The application's container uses the [default Node.js image](https://hub.docker.com/_/node) as its base image, and the database is based on the [official PostgreSQL image](https://hub.docker.com/_/postgres). The database is initialized with the [Chinook example database](https://www.github.com/lerocha/chinook-database), which contains sample data about artists, albums, and tracks.
 
 You don't need to understand the application code in detail for this exercise. If you want to, you can explore the following files in the [app](./app) folder more deeply:
@@ -47,12 +61,33 @@ You don't need to understand the application code in detail for this exercise. I
 
 The monitoring stack consists of several popular open-source tools:
 
-* [loki](https://grafana.com/oss/loki/) for log aggregation
-* [prometheus](https://prometheus.io/) for metrics collection
-* [grafana](https://grafana.com/) for visualization of metrics and logs
-* [alloy](https://grafana.com/oss/alloy-opentelemetry-collector/) as a metrics and logs collector.
+| Tool                                  | Purpose                           | Port   | Interfaces   |
+| ---                                   | ---                               | ---    | ---          |
+| [Loki](https://grafana.com/oss/loki/) | Log aggregation                   | `3100` | Service-to-service (Alloy sends logs; Grafana queries logs) |
+| [Prometheus](https://prometheus.io/)  | Metrics collection                | `9090` | Service-to-service (Alloy sends metrics; Grafana queries metrics) |
+| [Grafana](https://grafana.com/)       | Visualization of metrics and logs | `3000` | User-facing web interface |
+| [Alloy](https://grafana.com/oss/alloy-opentelemetry-collector/) | Metrics and logs collector | `12345` | User-facing Alloy UI; collection traffic is service-to-service |
 
 The setup is based on the [Monitor Docker containers with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) section in Grafana documentation. The [Docker compose file](./docker-monitoring/docker-compose.yml) and [configuration files](./docker-monitoring/) have been copied from the [Grafana Alloy Scenarios repository](https://github.com/grafana/alloy-scenarios/) and are licensed under the [Apache License, Version 2.0](https://github.com/grafana/alloy-scenarios/blob/main/LICENSE).
+
+```mermaid
+flowchart BT
+    subgraph compose["Docker Compose (monitoring)"]
+        alloy["alloy"]
+        loki["loki"]
+        prometheus["prometheus"]
+        grafana["grafana"]
+
+        alloy -->|logs| loki
+        alloy -->|metrics| prometheus
+        grafana -->|queries logs| loki
+        grafana -->|queries metrics| prometheus
+    end
+
+    browser["User's browser"] -->|HTTP| grafana
+    docker["Docker socket (/var/run/docker.sock)"] -->|container logs and metrics| alloy
+```
+
 
 > [!WARNING]
 > By default, this setup does not include any authentication, so anyone who can access the Grafana web interface can also view the logs and metrics. This is acceptable for local development and testing, but in a production environment, you should always enable authentication and restrict access to authorized users only.
